@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.Drawable
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -20,10 +21,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import com.example.launcher.ui.liquidglass.LauncherAppItem
-import com.example.launcher.ui.liquidglass.LiquidGlassAppDrawer
+import com.example.launcher.ui.liquidglass.LauncherAppitem
+import com.example.launcher.ui.liquidglass.LiquidGlassAppdrawer
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,13 +31,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    var apps by remember { mutableStateOf<List<LauncherAppItem>>(emptyList()) }
+                    var apps by remember { mutableStateOf<List<LauncherAppitem>>(emptyList()) }
 
                     LaunchedEffect(Unit) {
                         apps = loadInstalledApps()
                     }
 
-                    LiquidGlassAppDrawer(
+                    LiquidGlassAppdrawer(
                         apps = apps,
                         onAppClick = { app ->
                             val launchIntent = packageManager.getLaunchIntentForPackage(app.packageName)
@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
                         },
                         onAppLongClick = { app ->
                             val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                data = android.net.Uri.parse("package:${app.packageName}")
+                                data = Uri.parse("package:${app.packageName}")
                             }
                             startActivity(intent)
                         }
@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun loadInstalledApps(): List<LauncherAppItem> {
+    private fun loadInstalledApps(): List<LauncherAppitem> {
         val mainIntent = Intent(Intent.ACTION_MAIN, null).apply {
             addCategory(Intent.CATEGORY_LAUNCHER)
         }
@@ -80,42 +80,25 @@ class MainActivity : ComponentActivity() {
 
         return resolveInfos
             .mapNotNull { info ->
-                val pkg = info.activityInfo?.packageName ?: return@mapNotNull null
-                if (pkg == packageName) return@mapNotNull null
-                val label = info.loadLabel(packageManager)?.toString()?.trim().orEmpty()
-                if (label.isEmpty()) return@mapNotNull null
-                val iconBitmap = drawableToImageBitmap(info.loadIcon(packageManager))
-                val category = guessCategory(pkg, label)
-                LauncherAppItem(
-                    packageName = pkg,
+                val pkgName = info.activityInfo?.packageName ?: return@mapNotNull null
+                val label = info.loadLabel(packageManager)?.toString() ?: pkgName
+                val iconBitmap = info.loadIcon(packageManager)?.toBitmapOrNull()?.asImageBitmap()
+                LauncherAppitem(
                     label = label,
-                    category = category,
+                    packageName = pkgName,
                     icon = iconBitmap
                 )
             }
-            .distinctBy { it.packageName }
             .sortedBy { it.label.lowercase() }
     }
 
-    private fun guessCategory(pkg: String, label: String): String {
-        val text = "$pkg $label".lowercase()
-        return when {
-            listOf("camera", "photo", "gallery", "video", "music", "spotify", "youtube").any { it in text } -> "الوسائط"
-            listOf("whatsapp", "telegram", "chat", "mail", "gmail", "message", "sms", "phone").any { it in text } -> "التواصل"
-            listOf("game", "play").any { it in text } -> "الألعاب"
-            listOf("browser", "chrome", "maps", "settings", "clock", "calc", "files").any { it in text } -> "الأدوات"
-            else -> "عام"
-        }
-    }
-
-    private fun drawableToImageBitmap(drawable: Drawable?): ImageBitmap? {
-        if (drawable == null) return null
-        val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else 96
-        val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else 96
+    private fun Drawable.toBitmapOrNull(): Bitmap? {
+        val width = if (intrinsicWidth > 0) intrinsicWidth else 96
+        val height = if (intrinsicHeight > 0) intrinsicHeight else 96
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.width, canvas.height)
-        drawable.draw(canvas)
-        return bitmap.asImageBitmap()
+        setBounds(0, 0, canvas.width, canvas.height)
+        draw(canvas)
+        return bitmap
     }
 }
