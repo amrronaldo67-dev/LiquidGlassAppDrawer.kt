@@ -10,9 +10,10 @@
 
     <application
         android:allowBackup="true"
-        android:label="Liquid Glass Drawer"
+        android:label="Liquid Glass Launcher"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -21,6 +22,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
     </application>
 
 </manifest>
